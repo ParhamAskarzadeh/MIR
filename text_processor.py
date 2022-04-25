@@ -3,10 +3,9 @@ import re
 
 class Analyzer:
     def __init__(self):
-        #todo: اضافه کردن نیم فاصله
         self.namad = {",", ".", "،", "?", "؟", "!", "!", "#", "*", "(", ")", "[", "]", "{", "}", " "}
 
-    def __word_count(self, text: str):
+    def __word_tokenizer(self, text: str):
         word = ''
         words = []
         for letter in text:
@@ -23,7 +22,8 @@ class Analyzer:
                         word = ''
                     continue
                 word += letter
-        return len(words)
+        return {'words': words,
+                'word_count': len(words)}
 
     def __mention_count(self, text):
         return list(set(re.findall('@([\w_.]+)', text)))
@@ -57,25 +57,25 @@ class Analyzer:
                 "namad_count": len(namads)}
 
     def info_of_text(self, text: str):
-        return {'word_count': self.__word_count(text),
+        return {'word_count': self.__word_tokenizer(text)['word_count'],
                 'number_count': self.__number_count(text),
                 'letter_count': self.__Letter_info(text),
-                'hashtag_count': self.__hashtag_count(text),
-                'mention_count': self.__mention_count(text)
+                'hashtag_count': len(self.__hashtag_count(text)),
+                'mention_count': len(self.__mention_count(text))
                 }
+
+    def tokenizer(self, text: str):
+        return self.__word_tokenizer(text)['words']
 
 
 class Normalizer:
     def normalize(self, text: str) -> str:
-        text = f' {self.word_normalizer(text)} '
-        text = self.special_word_replacer(text)
-        text = self.left_semi_space_replacer(text)
-        text = self.right_semi_space_replacer(text)
-        text = self.special_semi_space_replacer(text)
+        text = self.__remove_shapes_and_convert_emojis_to_unicode(text)
+        text = self.__character_replacer(text)
 
         return text.strip()
 
-    def remove_shapes_and_convert_emojis_to_unicode(self, text):
+    def __remove_shapes_and_convert_emojis_to_unicode(self, text):
         shape_list = re.findall(r'[^\w\s,]', text)  # find all shape and emojis
         for shape in shape_list:
             shape_code = shape.encode('unicode-escape').decode('ASCII')
@@ -85,8 +85,7 @@ class Normalizer:
                 text = text.replace(shape, ' ')
         return text
 
-    @staticmethod
-    def character_replacer(text: str) -> str:
+    def __character_replacer(self, text: str):
         # Numbers
         text = re.sub(r'[٠⓪⓿０𝟶🄌]', '۰', text)
         text = re.sub(r'[١⓵❶➀➊꘡]', '۱', text)
@@ -154,6 +153,5 @@ class Normalizer:
         # semi-space
         text = text.replace('&zwnj;', '\u200c')
         text = re.sub(r'[\u2000-\u200f]+', "\u200c", text)
-
 
         return text
