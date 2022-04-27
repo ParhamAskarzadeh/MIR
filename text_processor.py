@@ -1,37 +1,23 @@
 import re
+from collections import Counter
+from hazm import Normalizer, POSTagger, SentenceTokenizer
+
+
 
 
 class Analyzer:
     def __init__(self):
-        self.namad = {",", ".", "،", "?", "؟", "!", "!", "#", "*", "(", ")", "[", "]", "{", "}", " "}
+        self.sign = {",", ".", "،", "?", "؟", "!", "!", "#", "*", "(", ")", "[", "]", "{", "}", " "}
+        # self.sentence_tokenizer = SentenceTokenizer()
+        # self.pos_tagger = POSTagger()
 
-    def __word_tokenizer(self, text: str):
-        word = ''
-        words = []
-        for letter in text:
-            try:
-                int(letter)
-                if len(word) != 0:
-                    words.append(word)
-                    word = ''
-                continue
-            except:
-                if letter in self.namad:
-                    if len(word) != 0:
-                        words.append(word)
-                        word = ''
-                    continue
-                word += letter
-        return {'words': words,
-                'word_count': len(words)}
-
-    def __mention_count(self, text):
+    def mentions(self, text):
         return list(set(re.findall('@([\w_.]+)', text)))
 
-    def __hashtag_count(self, text):
+    def __hashtags(self, text):
         return list(set(re.findall('#([\w_]+)', text)))
 
-    def __number_count(self, text: str):
+    def __numbers(self, text: str):
         number = ''
         numbers = []
         for letter in text:
@@ -43,35 +29,64 @@ class Analyzer:
                     number = ''
                 continue
             number += letter
-        return len(numbers)
+        return numbers
 
     def __Letter_info(self, text: str):
         letters = []
         namads = []
         for letter in text:
-            if letter not in self.namad:
+            if letter not in self.sign:
                 letters.append(letter)
             elif letter != " ":
                 namads.append(letter)
         return {"letter_count": len(letters),
-                "namad_count": len(namads)}
+                "sign_count": len(namads)}
 
     def info_of_text(self, text: str):
         return {'word_count': self.__word_tokenizer(text)['word_count'],
-                'number_count': self.__number_count(text),
-                'letter_count': self.__Letter_info(text),
-                'hashtag_count': len(self.__hashtag_count(text)),
-                'mention_count': len(self.__mention_count(text))
+                'numbers_info': {
+                    'numbers': self.__numbers(text),
+                    'count': len(self.__numbers(text))},
+                'letters_count': self.__Letter_info(text),
+                'hashtags_info': {
+                    'items': self.__hashtags(text),
+                    'count': len(self.__hashtags(text))},
+                'mentions_info': {
+                    'items': self.__mentions(text),
+                    'count': len(self.__mentions(text))}
                 }
 
     def tokenizer(self, text: str):
-        return self.__word_tokenizer(text)['words']
+        return self.sentence_tokenizer.tokenize(text)
+
+    def postagger(self, text):
+        return self.pos_tagger.tag(text)
+
+    def rate_keywords(self, text):
+        keywords = {
+            'خرید': ['خرید', 'سود', 'بالا', 'رشد'],
+            'فروش': ['ضرر', 'فروش', 'پایین', 'نزول'],
+            'نوسان': ['نوسان', 'تغییر'],
+        }
+        rate = Counter(text.split())
+        all = sum(dict(rate).values())
+        info_rate = {}
+        for word in rate:
+            info_rate[word] = round(float((rate[word] / all) * 100), 2)
+        print(info_rate)
+        return info_rate
 
 
-class Normalizer:
+
+class SelfNormalizer:
+    def __init__(self):
+        self.normalizer = Normalizer
+
     def normalize(self, text: str) -> str:
         text = self.__remove_shapes_and_convert_emojis_to_unicode(text)
         text = self.__character_replacer(text)
+        text = self.normalizer.normalize(text)
+        text = self.__remove_stopword(text)
 
         return text.strip()
 
@@ -111,6 +126,7 @@ class Normalizer:
 
         text = re.sub(r'[دﺩﺪ]', 'د', text)
         text = re.sub(r'[ذﺫﺬ𞸘]', 'ذ', text)
+
         text = re.sub(r'[رﺭﺮ𞸓]', 'ر', text)
         text = re.sub(r'[زࢲﺯﺰ𞸆]', 'ز', text)
         text = re.sub(r'[ژﮊﮋ]', 'ژ', text)
@@ -153,5 +169,15 @@ class Normalizer:
         # semi-space
         text = text.replace('&zwnj;', '\u200c')
         text = re.sub(r'[\u2000-\u200f]+', "\u200c", text)
-
         return text
+
+    def __remove_stopword(self, text):
+        stop_words = ['از', 'به ', 'با', 'نه ', 'را', 'که ', 'بود', 'است', 'هست', 'شد', ' در ', 'اگر ', 'همچنین ',
+                      'چنین ', 'داشت']
+        for word in stop_words:
+            text = re.sub(word, ' ', text)
+        return text
+
+
+if __name__ == '__main__':
+    print(Analyzer().mentions('دی امروز پنج پنج درصد رشد داشت'))

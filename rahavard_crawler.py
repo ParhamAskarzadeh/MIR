@@ -3,11 +3,13 @@ from requests.exceptions import ChunkedEncodingError, ConnectionError
 import json
 import time
 import requests
+import random
+
 
 
 class TweetCrawler:
 
-    def crawl_tweets(self, before_id):
+    def crawl_tweets(self, before_id=999999):
         url = f'https://rahavard365.com/api/moreposts?before_id={before_id}'
         headers = {
             'user-agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.4896.127 Safari/537.36',
@@ -25,7 +27,6 @@ class TweetCrawler:
                 time.sleep(30)
                 continue
             except Exception as e:
-                print(type(e))
                 raise e
             result = json.loads(response.text)
-            return result
+            return result['data'].get('posts')[random.randint(0, 19)]['body']
